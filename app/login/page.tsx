@@ -117,9 +117,9 @@ const PatientContent: React.FC = () => {
       if (!userStatus.exists) {
         // New User - redirect to onboarding with intended role
         console.log("New user detected, redirecting to onboarding");
-        setUser(finalUserId, intendedRole as any, "no");
+        setUser(finalUserId, intendedRole as any, "no", data.user_country_code + data.user_phone_number);
         isProcessing = false;
-        router.push("/onboarding");
+        router.replace("/onboarding");
         return;
       }
 
@@ -128,7 +128,7 @@ const PatientContent: React.FC = () => {
       const isOnboarded = userStatus.onboarded;
       console.log("Existing user detected - role:", userRole, "onboarded:", isOnboarded);
 
-      setUser(finalUserId, userRole, isOnboarded === "yes" ? "yes" : "no");
+      setUser(finalUserId, userRole, isOnboarded === "yes" ? "yes" : "no", data.user_country_code + data.user_phone_number);
       isProcessing = false;
 
       // STRICT CHECK: Only redirect to dashboard if onboarded === 'yes'
@@ -167,7 +167,7 @@ const PatientContent: React.FC = () => {
 
       setUser(fallbackUserId, "guest", "no");
       isProcessing = false;
-      router.push("/onboarding");
+      router.replace("/onboarding");
     }
   };
 
@@ -235,9 +235,9 @@ const DonorContent: React.FC = () => {
       if (!userStatus.exists) {
         // New User - redirect to onboarding with intended role
         console.log("New user detected, redirecting to onboarding");
-        setUser(finalUserId, intendedRole as any, "no");
+        setUser(finalUserId, intendedRole as any, "no", data.user_country_code + data.user_phone_number);
         isProcessing = false;
-        router.push("/onboarding");
+        router.replace("/onboarding");
         return;
       }
 
@@ -246,7 +246,7 @@ const DonorContent: React.FC = () => {
       const isOnboarded = userStatus.onboarded;
       console.log("Existing user detected - role:", userRole, "onboarded:", isOnboarded);
 
-      setUser(finalUserId, userRole, isOnboarded === "yes" ? "yes" : "no");
+      setUser(finalUserId, userRole, isOnboarded === "yes" ? "yes" : "no", data.user_country_code + data.user_phone_number);
       isProcessing = false;
 
       // STRICT CHECK: Only redirect to dashboard if onboarded === 'yes'
@@ -282,7 +282,7 @@ const DonorContent: React.FC = () => {
 
       setUser(fallbackUserId, "guest", "no");
       isProcessing = false;
-      router.push("/onboarding");
+      router.replace("/onboarding");
     }
   };
 
@@ -350,7 +350,7 @@ const VeterinaryContent: React.FC = () => {
         console.log("New user detected, redirecting to onboarding");
         setUser(finalUserId, intendedRole as any, "no");
         isProcessing = false;
-        router.push("/onboarding");
+        router.replace("/onboarding");
         return;
       }
 
@@ -395,7 +395,7 @@ const VeterinaryContent: React.FC = () => {
 
       setUser(fallbackUserId, "guest", "no");
       isProcessing = false;
-      router.push("/onboarding");
+      router.replace("/onboarding");
     }
   };
 
@@ -463,7 +463,7 @@ const OrganisationContent: React.FC = () => {
         console.log("New user detected, redirecting to onboarding");
         setUser(finalUserId, intendedRole as any, "no");
         isProcessing = false;
-        router.push("/onboarding");
+        router.replace("/onboarding");
         return;
       }
 
@@ -508,7 +508,7 @@ const OrganisationContent: React.FC = () => {
 
       setUser(fallbackUserId, "guest", "no");
       isProcessing = false;
-      router.push("/onboarding");
+      router.replace("/onboarding");
     }
   };
 

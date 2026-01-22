@@ -12,7 +12,7 @@ import OrganisationOnboarding from "@/components/onb-forms/organisationOnb";
 import HeartLoading from "@/components/custom/HeartLoading";
 
 const OnboardingPage = () => {
-  const { setUser, userId, role } = useUser();
+  const { setUser, userId, role, onboarded, isAuthLoading } = useUser();
   const router = useRouter();
   const [content, setContent] = useState<JSX.Element | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,8 +20,35 @@ const OnboardingPage = () => {
 
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (isAuthLoading) {
+      return;
+    }
+
+    // Redirect to login if no userId
     if (!userId) {
-      router.push("/login");
+      router.replace("/login");
+      return;
+    }
+
+    // If user is already onboarded, redirect to dashboard
+    if (role !== "guest" && onboarded === "yes") {
+      switch (role) {
+        case "patient":
+          router.replace("/app/p/dashboard");
+          break;
+        case "donor":
+          router.replace("/app/d/dashboard");
+          break;
+        case "veterinary":
+          router.replace("/app/h/dashboard");
+          break;
+        case "organisation":
+          router.replace("/app/o/dashboard");
+          break;
+        default:
+          router.replace("/app");
+      }
       return;
     }
 
@@ -32,13 +59,16 @@ const OnboardingPage = () => {
       // Auto-select the role and show appropriate form
       sessionStorage.removeItem('pendingRole');
       handleRoleSelection(pendingRole);
+    } else if (role !== "guest") {
+      // User has a role but not onboarded - show form directly
+      handleRoleSelection(role);
     } else {
-      // Show role selection first
+      // Show role selection for new users
       setContent(<RoleSelection onSelect={handleRoleSelection} />);
     }
 
     setIsLoading(false);
-  }, [userId, router]);
+  }, [userId, role, onboarded, isAuthLoading, router]);
 
 
   const handleRoleSelection = async (role: string) => {
@@ -112,7 +142,7 @@ const OnboardingPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <HeartLoading />

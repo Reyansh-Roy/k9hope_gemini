@@ -56,7 +56,9 @@ interface IUserContext {
   role: UserRole;
   onboarded: Onboarded;
   device: Device;
-  setUser: (userId: string | null, role: UserRole, onboarded: Onboarded) => void;
+  phone: string | null;
+  isAuthLoading: boolean;
+  setUser: (userId: string | null, role: UserRole, onboarded: Onboarded, phone?: string | null) => void;
   setDevice: (device: Device) => void;
 }
 
@@ -66,6 +68,8 @@ const UserContext = createContext<IUserContext>({
   role: "guest",
   onboarded: "guest",
   device: "desktop",
+  phone: null,
+  isAuthLoading: true,
   setUser: () => { },
   setDevice: () => { },
 });
@@ -76,20 +80,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole>("guest");
   const [onboarded, setOnboarded] = useState<Onboarded>("guest");
   const [device, setDevice] = useState<Device>("desktop");
+  const [phone, setPhone] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
   // Function to update User Context
-  function setUser(newUserId: string | null, newRole: UserRole, newStatus: Onboarded) {
-    console.log("setUser called with:", { newUserId, newRole, newStatus });
-    
+  function setUser(newUserId: string | null, newRole: UserRole, newStatus: Onboarded, newPhone?: string | null) {
+    console.log("setUser called with:", { newUserId, newRole, newStatus, newPhone });
+
     setUserId(newUserId);
     setRole(newRole);
     setOnboarded(newStatus);
+    if (newPhone !== undefined) setPhone(newPhone);
 
     // Store in cookies to persist session - handle null/undefined values
     try {
       setEncryptedCookie("userId", newUserId || "", 7);
       setEncryptedCookie("role", newRole || "guest", 7);
       setEncryptedCookie("onboarded", newStatus || "guest", 7);
+      if (newPhone) setEncryptedCookie("phone", newPhone, 7);
     } catch (error) {
       console.error("Error setting user cookies:", error);
       // Continue even if cookies fail - user state is still set in React state
@@ -103,22 +111,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Load stored user data from cookies on mount
   useEffect(() => {
+    setIsAuthLoading(true);
+
     const storedUserId = getDecryptedCookie("userId") || null;
     const storedRole = (getDecryptedCookie("role") as UserRole) || "guest";
     const storedStatus = (getDecryptedCookie("onboarded") as Onboarded) || "guest";
+    const storedPhone = getDecryptedCookie("phone") || null;
 
     setUserId(storedUserId !== "" ? storedUserId : null);
     setRole(storedRole);
     setOnboarded(storedStatus);
+    setPhone(storedPhone);
 
     // Detect device on mount (client-side only)
     if (typeof window !== "undefined") {
       setDevice(window.innerWidth < 500 ? "mobile" : "desktop");
     }
+
+    // Mark auth loading as complete
+    setIsAuthLoading(false);
   }, []);
 
   return (
-    <UserContext.Provider value={{ userId, role, onboarded, device, setUser, setDevice: updateDevice }}>
+    <UserContext.Provider value={{ userId, role, onboarded, device, phone, isAuthLoading, setUser, setDevice: updateDevice }}>
       {children}
     </UserContext.Provider>
   );

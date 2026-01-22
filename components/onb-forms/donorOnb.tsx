@@ -145,20 +145,9 @@ const formSchema = z.object({
 
 export default function OnboardingDon() {
 
-    const { userId, role, device, setUser } = useUser();
+    const { userId, role, device, phone, setUser } = useUser();
     const router = useRouter();
-    const [donor, setDonor] = useState<any>(null);
 
-    // Fetch Donor data when the component loads
-    useEffect(() => {
-        if (userId) {
-            async function fetchDonorData() {
-                const data = await getDonorById(userId);
-                setDonor(data); // Set Donor data (null if not found)
-            }
-            fetchDonorData();
-        }
-    }, [userId]);
 
 
     //Logout Function
@@ -213,20 +202,32 @@ export default function OnboardingDon() {
     })
 
     useEffect(() => {
-        if (donor?.phone) {
+        if (phone) {
             form.reset({
-                phone: donor.phone,
+                phone: phone,
+                email: "",
                 onboarded: "yes",
                 totalDonations: 0,
-                // Default resets
+
                 d_isMedication: "no",
                 d_transfusion_history: "no",
                 d_travelled_abroad: "no",
                 d_general_health: "yes",
-                signature_date: new Date().toISOString().split('T')[0]
+
+                d_vaccinations_core: false,
+                d_vaccinations_rabies: false,
+                d_vaccinations_boosters: false,
+
+                consent_owner_legal: false,
+                consent_health_screening: false,
+                consent_contact: false,
+                consent_voluntary: false,
+                consent_truthful: false,
+
+                signature_date: new Date().toISOString().split('T')[0],
             });
         }
-    }, [donor?.phone, form]);
+    }, [phone, form]);
 
     const isOnMedication = form.watch("d_isMedication") === "yes";
     const isGeneralHealthIssue = form.watch("d_general_health") === "no";
@@ -339,7 +340,7 @@ export default function OnboardingDon() {
                                             <FormLabel>Contact Phone Number *</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <Input {...field} disabled value={donor?.phone || ''} className="bg-gray-100 dark:bg-gray-900" />
+                                                    <Input {...field} disabled value={phone || ''} className="bg-gray-100 dark:bg-gray-900" />
                                                 </div>
                                             </FormControl>
                                             <FormDescription>Login with new phone to change this</FormDescription>
