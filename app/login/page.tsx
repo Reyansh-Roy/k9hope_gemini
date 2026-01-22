@@ -197,7 +197,7 @@ const PatientContent: React.FC = () => {
 const DonorContent: React.FC = () => {
   const { setUser } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState<JSX.Element | null>(null);
+  const [content, setContent] = useState<React.ReactElement | null>(null);
 
   let isProcessing = false;
 
@@ -313,7 +313,7 @@ const DonorContent: React.FC = () => {
 const VeterinaryContent: React.FC = () => {
   const { setUser } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState<JSX.Element | null>(null);
+  const [content, setContent] = useState<React.ReactElement | null>(null);
 
   let isProcessing = false;
 
@@ -426,7 +426,7 @@ const VeterinaryContent: React.FC = () => {
 const OrganisationContent: React.FC = () => {
   const { setUser } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState<JSX.Element | null>(null);
+  const [content, setContent] = useState<React.ReactElement | null>(null);
 
   let isProcessing = false;
 
