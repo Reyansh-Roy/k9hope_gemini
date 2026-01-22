@@ -330,3 +330,20 @@
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Uploadcare Custom Styling */
+.uc-light.uc-app {
+  --uc-brand-color: rgba(239, 68, 68, 1);
+  --uc-brand-color-hover: rgba(220, 38, 38, 1);
+}
+
+.uc-btn-primary {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+}
+
+.uc-btn-primary:hover {
+  background-color: #dc2626 !important;
+}

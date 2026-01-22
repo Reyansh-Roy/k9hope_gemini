@@ -461,31 +461,17 @@ export function getMenuList(pathname: string, role: "guest" | "admin" | "removed
             href: "/app/d/profile",
             label: "Profile",
             icon: SquareUserRound
-          },
-          {
-            href: "/app/d/settings",
-            label: "Settings",
-            icon: Settings
-          },
+          }
         ]
       },
       {
-        groupLabel: "Help & Support",
+        groupLabel: "",
         menus: [
           {
-            href: "/app/d/community",
-            label: "Community",
-            icon: Users
-          },
-          {
-            href: "/app/d/feedback",
-            label: "Feedback",
-            icon: MessageCircleReply
-          },
-          {
             href: "/app/d/syncbot",
-            label: "Chat with Syncbot",
-            icon: BotMessageSquare
+            label: "K9 Buddy AI",
+            icon: Bot,
+            isSpecial: true
           }
         ]
       }
