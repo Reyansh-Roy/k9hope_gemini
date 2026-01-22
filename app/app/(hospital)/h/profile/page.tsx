@@ -93,7 +93,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    if (userId && role == "hospital") {
+    if (userId && role === "hospital") {
       async function fetchHospitalData() {
         const data = await getUserDataById(userId, "hospital");
         setProfile(data); // Set Hospital data (null if not found)
