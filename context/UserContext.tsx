@@ -46,7 +46,7 @@ export function getDecryptedCookie(name: string) {
 
 
 // Define types
-export type UserRole = "guest" | "patient" | "donor" | "veterinary" | "organisation" | "admin" | "removed";
+export type UserRole = "guest" | "patient" | "donor" | "veterinary" | "hospital" | "organisation" | "admin" | "removed";
 export type Onboarded = "guest" | "no" | "yes";
 export type Device = "desktop" | "mobile";
 
