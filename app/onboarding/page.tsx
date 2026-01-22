@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { doc, setDoc } from "firebase/firestore";
@@ -14,7 +14,7 @@ import HeartLoading from "@/components/custom/HeartLoading";
 const OnboardingPage = () => {
   const { setUser, userId, role, onboarded, isAuthLoading } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState<JSX.Element | null>(null);
+  const [content, setContent] = useState<React.ReactElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<string>("");
 
