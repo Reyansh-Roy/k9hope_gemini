@@ -1,6 +1,6 @@
 // import Firestore & its functions
 import { db } from "@/firebaseConfig";
-import { doc, collection, addDoc, getDocs, getDoc, setDoc, updateDoc, query, where, deleteDoc } from "firebase/firestore";
+import { doc, collection, addDoc, getDocs, getDoc, setDoc, updateDoc, query, where, deleteDoc, orderBy, limit } from "firebase/firestore";
 import { signInAnonymously, signOut } from "firebase/auth";
 import { auth } from "@/firebaseConfig";
 
@@ -451,8 +451,148 @@ export async function deleteUserById(userId: string, role: string) {
             }
         }
         catch (error) {
-            console.error("Error deleting organisation:", error);
             return null;
         }
     }
+}
+
+// ==================== DONOR DASHBOARD FUNCTIONS ====================
+
+// Get donor's donation history
+export async function getDonorHistory(donorId: string) {
+    try {
+        const donationsRef = collection(db, "donations");
+        const q = query(
+            donationsRef,
+            where("donorId", "==", donorId),
+            orderBy("donationDate", "desc")
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error fetching donor history:", error);
+        return [];
+    }
+}
+
+// Get urgent blood requests (patients with urgency = immediate or within_24_hours)
+export async function getUrgentRequests(donorCity?: string, donorBloodType?: string) {
+    try {
+        const patientsRef = collection(db, "patients");
+
+        // Query for urgent patients
+        const q = query(
+            patientsRef,
+            where("onboarded", "==", "yes"),
+            orderBy("createdAt", "desc"),
+            limit(20)
+        );
+
+        const snapshot = await getDocs(q);
+        let requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+        // Client-side filtering for urgency
+        requests = requests.filter((req: any) =>
+            req.p_urgencyRequirment === "immediate" ||
+            req.p_urgencyRequirment === "within_24_hours"
+        );
+
+        // Client-side filtering for blood type match
+        if (donorBloodType) {
+            requests = requests.filter((req: any) => req.p_bloodgroup === donorBloodType);
+        }
+
+        // Prioritize same city
+        if (donorCity) {
+            requests = requests.sort((a: any, b: any) => {
+                const aMatch = a.p_city?.toLowerCase() === donorCity.toLowerCase() ? 0 : 1;
+                const bMatch = b.p_city?.toLowerCase() === donorCity.toLowerCase() ? 0 : 1;
+                return aMatch - bMatch;
+            });
+        }
+
+        return requests.slice(0, 6); // Return max 6 urgent requests
+    } catch (error) {
+        console.error("Error fetching urgent requests:", error);
+        return [];
+    }
+}
+
+// Get donor stats (total donations, lives saved)
+export async function getDonorStats(donorId: string) {
+    try {
+        const donationsRef = collection(db, "donations");
+        const q = query(donationsRef, where("donorId", "==", donorId));
+        const snapshot = await getDocs(q);
+
+        const totalDonations = snapshot.size;
+        const livesSaved = totalDonations * 3; // Each donation helps ~3 patients
+
+        const donations = snapshot.docs.map(doc => doc.data());
+        let lastDonation = null;
+
+        if (donations.length > 0) {
+            // Sort by donation date and get the most recent
+            const sortedDonations = donations.sort((a: any, b: any) => {
+                const dateA = a.donationDate?.toDate ? a.donationDate.toDate() : new Date(a.donationDate);
+                const dateB = b.donationDate?.toDate ? b.donationDate.toDate() : new Date(b.donationDate);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            const mostRecent = sortedDonations[0];
+            lastDonation = mostRecent.donationDate?.toDate ? mostRecent.donationDate.toDate() : new Date(mostRecent.donationDate);
+        }
+
+        // Calculate next eligible date (8 weeks from last donation)
+        let nextEligible = "Now";
+        let nextEligibleDate = null;
+
+        if (lastDonation) {
+            const eligibleDate = new Date(lastDonation);
+            eligibleDate.setDate(eligibleDate.getDate() + 56); // 8 weeks = 56 days
+            nextEligibleDate = eligibleDate;
+
+            if (eligibleDate > new Date()) {
+                nextEligible = eligibleDate.toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+        }
+
+        return {
+            totalDonations,
+            livesSaved,
+            lastDonation: lastDonation ? lastDonation.toLocaleDateString('en-IN', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }) : "Never",
+            lastDonationDate: lastDonation,
+            nextEligible,
+            nextEligibleDate,
+            isEligible: nextEligible === "Now"
+        };
+    } catch (error) {
+        console.error("Error fetching donor stats:", error);
+        return {
+            totalDonations: 0,
+            livesSaved: 0,
+            lastDonation: "Never",
+            lastDonationDate: null,
+            nextEligible: "Now",
+            nextEligibleDate: null,
+            isEligible: true
+        };
+    }
+}
+
+// Calculate distance between two locations (simplified - can use Google Maps API later)
+export function calculateDistance(city1: string, city2: string): string {
+    // For MVP: return "nearby" for same city, "X km" otherwise
+    if (city1?.toLowerCase() === city2?.toLowerCase()) {
+        return "2-5 km away"; // Placeholder for same city
+    }
+    return "15+ km away"; // Placeholder for different city
 }

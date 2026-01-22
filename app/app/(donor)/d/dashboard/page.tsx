@@ -2,98 +2,77 @@
 import React, { useEffect, useState } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { useUser } from "@/context/UserContext";
-import { getUserDataById } from "@/firebaseFunctions";
+import { useRouter } from "next/navigation";
+import { getUserDataById, getDonorStats, getUrgentRequests } from "@/firebaseFunctions";
 import { EligibilityStatusCard } from "@/components/donor-dashboard/EligibilityStatusCard";
 import { ActionCard } from "@/components/donor-dashboard/ActionCard";
 import { UrgentRequestCard } from "@/components/donor-dashboard/UrgentRequestCard";
 import { StatsCard } from "@/components/donor-dashboard/StatsCard";
 import { AlertCircle, MapPin, Calendar, BarChart3, Heart, Users, Clock, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import HeartLoading from "@/components/custom/HeartLoading";
 
 export default function DonorDashboard() {
   const { userId, role } = useUser();
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [urgentRequests, setUrgentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState("");
 
   useEffect(() => {
+    // Redirect if not a donor
+    if (!userId || role !== "donor") {
+      router.push("/");
+      return;
+    }
+
     // Set greeting based on time of day
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good Morning");
     else if (hour < 17) setGreeting("Good Afternoon");
     else setGreeting("Good Evening");
 
-    // Fetch donor data
-    async function fetchDonorData() {
-      if (!userId) return;
+    // Fetch all dashboard data
+    async function fetchDashboardData() {
+      setLoading(true);
       try {
-        const data = await getUserDataById(userId, "donor");
-        setProfile(data);
+        // Fetch donor profile data
+        const donorData = await getUserDataById(userId, "donor");
+        setProfile(donorData);
+
+        if (donorData) {
+          // Fetch donor stats (donations, lives saved, etc.)
+          const donorStats = await getDonorStats(userId);
+          setStats(donorStats);
+
+          // Fetch urgent requests filtered by donor's city and blood type
+          const requests = await getUrgentRequests(donorData.d_city, donorData.d_bloodgroup);
+          setUrgentRequests(requests);
+        }
       } catch (error) {
-        console.error("Error fetching donor data:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchDonorData();
-  }, [userId]);
 
-  // Mock data for demonstration - replace with real data from API
-  const urgentRequests = [
-    {
-      id: "req-001",
-      patientName: "Max",
-      bloodType: "DEA 1.1+",
-      urgency: "immediate" as const,
-      distance: 2.3,
-      location: "Chennai",
-    },
-    {
-      id: "req-002",
-      patientId: "P12345",
-      bloodType: "DEA 4",
-      urgency: "within-24hrs" as const,
-      distance: 5.7,
-      location: "T. Nagar",
-    },
-    {
-      id: "req-003",
-      patientName: "Bella",
-      bloodType: "DEA 1.2+",
-      urgency: "within-48hrs" as const,
-      distance: 8.1,
-      location: "Adyar",
-    },
-  ];
-
-  const donorName = profile?.d_name || "Donor";
-  const totalDonations = profile?.totalDonations || 0;
-  const lastDonationDate = profile?.lastDonationDate
-    ? new Date(profile.lastDonationDate)
-    : null;
-
-  // Calculate next eligible date (typically 8 weeks after last donation)
-  const nextEligibleDate = lastDonationDate
-    ? new Date(lastDonationDate.getTime() + 56 * 24 * 60 * 60 * 1000)
-    : null;
-
-  const isEligible = !nextEligibleDate || nextEligibleDate <= new Date();
+    fetchDashboardData();
+  }, [userId, role, router]);
 
   if (loading) {
     return (
-      <ContentLayout title="Dashboard">
-        <div className="space-y-6">
-          <Skeleton className="h-32 w-full" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
-          </div>
-        </div>
-      </ContentLayout>
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <HeartLoading />
+      </div>
     );
   }
+
+  const donorName = profile?.d_name || "Donor";
+  const isEligible = stats?.isEligible ?? true;
+  const nextEligibleDate = stats?.nextEligibleDate;
+  const lastDonationDate = stats?.lastDonationDate;
 
   return (
     <ContentLayout title="Dashboard">
@@ -112,8 +91,8 @@ export default function DonorDashboard() {
         <EligibilityStatusCard
           isEligible={isEligible}
           donorName={donorName}
-          nextEligibleDate={nextEligibleDate || undefined}
-          lastDonationDate={lastDonationDate || undefined}
+          nextEligibleDate={nextEligibleDate}
+          lastDonationDate={lastDonationDate}
         />
 
         {/* Quick Action Cards Grid */}
@@ -163,8 +142,22 @@ export default function DonorDashboard() {
           </div>
           {urgentRequests.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {urgentRequests.map((request) => (
-                <UrgentRequestCard key={request.id} {...request} />
+              {urgentRequests.map((request: any) => (
+                <UrgentRequestCard
+                  key={request.id}
+                  id={request.id}
+                  patientName={request.p_name}
+                  patientId={request.id}
+                  bloodType={request.p_bloodgroup}
+                  urgency={
+                    request.p_urgencyRequirment === "immediate"
+                      ? "immediate"
+                      : request.p_urgencyRequirment === "within_24_hours"
+                        ? "within-24hrs"
+                        : "within-48hrs"
+                  }
+                  location={`${request.p_city || "Unknown"}, ${request.p_pincode || ""}`}
+                />
               ))}
             </div>
           ) : (
@@ -191,42 +184,28 @@ export default function DonorDashboard() {
             <StatsCard
               icon={Heart}
               title="Total Donations"
-              value={totalDonations}
+              value={stats?.totalDonations || 0}
               subtitle="Lifetime contributions"
               colorScheme="blue"
             />
             <StatsCard
               icon={Users}
               title="Lives Potentially Saved"
-              value={totalDonations * 3}
+              value={stats?.livesSaved || 0}
               subtitle="Each donation helps 3 patients"
               colorScheme="green"
             />
             <StatsCard
               icon={Clock}
               title="Last Donation"
-              value={
-                lastDonationDate
-                  ? lastDonationDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                  : "Never"
-              }
-              subtitle={lastDonationDate ? "Thank you!" : "Ready to start?"}
+              value={stats?.lastDonation || "Never"}
+              subtitle={stats?.lastDonation !== "Never" ? "Thank you!" : "Ready to start?"}
               colorScheme="purple"
             />
             <StatsCard
               icon={TrendingUp}
               title="Next Available"
-              value={
-                nextEligibleDate && !isEligible
-                  ? nextEligibleDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                  : "Now"
-              }
+              value={stats?.nextEligible || "Now"}
               subtitle={isEligible ? "You're eligible!" : "Mark your calendar"}
               colorScheme="orange"
             />
