@@ -1,657 +1,258 @@
-//@ts-nocheck
-"use client"
-
-import { useState, useEffect } from "react";
-import {
-  Search,
-  MapPin,
-  Droplets,
-  Mail,
-  Phone,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  X
-} from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ContentLayout } from "@/components/admin-panel/content-layout"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import {
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  query,
-  where,
-  Timestamp,
-  updateDoc,
-  arrayUnion
-} from "firebase/firestore";
-import { db } from "@/firebaseConfig";
-
+"use client";
+import { useEffect, useState } from "react";
 import { useUser } from "@/context/UserContext";
-import { getUserDataById } from "@/firebaseFunctions";
-
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-
-export type HospitalRequest = {
-  id: string,
-  hospitalId: string,
-  createdAt: Timestamp | null,
-  isUrgent: string,
-  status: string,
-  cause: string | null,
-  bloodQtyNeeded: number,
-  // Hospital data (to be populated)
-  h_name?: string,
-  h_logo_url?: string,
-  email?: string,
-  h_phone?: string,
-  h_lat?: number,
-  h_lon?: number,
-  distance?: number,
-}
-
-function getInitials(name: string): string {
-  if (!name) return ""
-  const words = name.trim().split(" ").filter(Boolean)
-  if (words.length === 1) return words[0][0].toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
-}
-
-function formatTimeAgo(timestamp: Timestamp | null) {
-  if (!timestamp || !timestamp.toDate) {
-    return "Unknown time";
-  }
-
-  try {
-    const date = timestamp.toDate();
-    const now = new Date();
-
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return "just now";
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-    } else {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
-    }
-  } catch (error) {
-    console.error("Error parsing date:", error);
-    return "unknown time ago";
-  }
-}
+import { useRouter } from "next/navigation";
+import { getUserDataById, getUrgentRequests } from "@/firebaseFunctions";
+import { MapPin, Droplet, Phone, Mail, ChevronDown, Navigation, Search, Info } from "lucide-react";
+import HeartLoading from "@/components/custom/HeartLoading";
+import Link from "next/link";
+import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 export default function NearbyDonationsPage() {
-  // User data
   const { userId, role } = useUser();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{ lat: number, lon: number } | null>(null);
-  const [hospitalRequests, setHospitalRequests] = useState<HospitalRequest[]>([]);
+  const router = useRouter();
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
+  const [donorData, setDonorData] = useState<any>(null);
+  const [nearbyRequests, setNearbyRequests] = useState<any[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterBloodType, setFilterBloodType] = useState("all");
 
-  // UI states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("distance");
-  const [open, setOpen] = useState(false);
-  const [selectedHospital, setSelectedHospital] = useState<HospitalRequest | null>(null);
-
-  // Appointment booking
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [selectedTime, setSelectedTime] = useState("");
-  const [isBooking, setIsBooking] = useState(false);
-
-  // Time slots
-  const timeSlots = [
-    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
-  ];
-
-  // Get user location
-  const getUserLocation = async () => {
-    const geoOptions = { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 };
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("Error getting user location", error);
-        },
-        geoOptions
-      );
-    } else {
-      console.error("Geolocation not supported");
-    }
-  };
-
-  // Calculate distance between coordinates
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const toRad = (value: number) => (value * Math.PI) / 180;
-    const R = 6371; // Radius of the Earth in km
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-  };
-
-  // Book appointment
-  const bookAppointment = async () => {
-    if (!selectedHospital || !date || !selectedTime || !userId) {
-      alert("Please select a date and time for your appointment");
+  useEffect(() => {
+    if (!userId || role !== "donor") {
+      router.push("/");
       return;
     }
 
-    setIsBooking(true);
-    try {
-      // Format appointment date and time for storage
-      const formattedDate = format(date, "yyyy-MM-dd");
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const donor = await getUserDataById(userId, "donor");
+        setDonorData(donor);
 
-      // Update the hospital request document
-      const requestRef = doc(db, "hospital-requests", selectedHospital.id);
-      await updateDoc(requestRef, {
-        bookedDonors: arrayUnion({
-          userId: userId,
-          date: formattedDate,
-          time: selectedTime,
-          bookedAt: Timestamp.now()
-        })
-      });
-
-      alert("Appointment booked successfully!");
-      setOpen(false);
-      // Reset appointment values
-      setDate(undefined);
-      setSelectedTime("");
-    } catch (error) {
-      console.error("Error booking appointment:", error);
-      alert("Failed to book appointment. Please try again.");
-    } finally {
-      setIsBooking(false);
-    }
-  };
-
-  // Fetch user profile
-  useEffect(() => {
-    if (userId && role === "donor") {
-      async function fetchDonorData() {
-        try {
-          const data = await getUserDataById(userId, "donor");
-          setProfile(data);
-        } catch (error) {
-          console.error("Error fetching donor data:", error);
+        if (donor) {
+          // Get all requests, not just urgent ones
+          const requests = await getUrgentRequests(undefined, undefined, false);
+          setNearbyRequests(requests);
+          setFilteredRequests(requests);
         }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
       }
-      fetchDonorData();
     }
-  }, [userId, role]);
 
-  // Get user location and fetch hospital requests
+    fetchData();
+  }, [userId, role, router]);
+
+  // Filter functionality
   useEffect(() => {
-    getUserLocation();
-    fetchHospitalRequests();
-  }, []);
+    let filtered = [...nearbyRequests];
 
-  // Process hospital requests when user location changes
-  useEffect(() => {
-    if (userLocation && hospitalRequests.length > 0) {
-      const requestsWithDistance = hospitalRequests.map(request => {
-        if (request.h_lat && request.h_lon) {
-          const calculatedDistance = calculateDistance(
-            userLocation.lat,
-            userLocation.lon,
-            request.h_lat,
-            request.h_lon
-          );
-
-          return {
-            ...request,
-            distance: calculatedDistance.toFixed(1)
-          };
-        }
-        return request;
-      });
-
-      setHospitalRequests(requestsWithDistance);
-      setLoading(false);
-    }
-  }, [userLocation, hospitalRequests.length]);
-
-  // Fetch hospital requests and related hospital data
-  const fetchHospitalRequests = async () => {
-    setLoading(true);
-    try {
-      // Query non urgent and open requests only
-      const requestsQuery = query(
-        collection(db, "hospital-requests"),
-        where("isUrgent", "==", "no"),
-        where("status", "==", "open")
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(req =>
+        req.p_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        req.p_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        req.p_hospitalName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
-
-      const requestsSnapshot = await getDocs(requestsQuery);
-
-      const requests: HospitalRequest[] = [];
-
-      // Process each request
-      for (const requestDoc of requestsSnapshot.docs) {
-        const requestData = requestDoc.data();
-
-        // Extract hospital ID from the document ID (format: hospitalId-requestNo)
-        const docId = requestDoc.id;
-        const hospitalId = docId.split("-").slice(0, -1).join("-");
-
-        // Fetch hospital data
-        const hospitalDoc = await getDoc(doc(db, "hospitals", hospitalId));
-
-        if (hospitalDoc.exists()) {
-          const hospitalData = hospitalDoc.data();
-
-          requests.push({
-            id: docId,
-            hospitalId: hospitalId,
-            createdAt: requestData.createdAt || null,
-            isUrgent: requestData.isUrgent || "no",
-            status: requestData.status || "open",
-            cause: requestData.cause || null,
-            bloodQtyNeeded: requestData.bloodQtyNeeded || 0,
-            h_name: hospitalData.h_name || "Unknown Hospital",
-            h_logo_url: hospitalData.h_logo_url || "",
-            email: hospitalData.email || "",
-            h_phone: hospitalData.h_phone || "",
-            h_lat: hospitalData.h_lat || 0,
-            h_lon: hospitalData.h_lon || 0
-          });
-        }
-      }
-
-      setHospitalRequests(requests);
-
-      if (!userLocation) {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error("Error fetching hospital requests:", error);
-      setLoading(false);
     }
-  };
 
-  // Filter and sort data
-  const filteredData = hospitalRequests.filter(hospital =>
-    hospital.h_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const sortedData = [...filteredData].sort((a, b) => {
-    if (sortBy === "distance") {
-      const distA = parseFloat(a.distance as string || "999");
-      const distB = parseFloat(b.distance as string || "999");
-      return distA - distB;
-    } else if (sortBy === "quantity") {
-      return (b.bloodQtyNeeded || 0) - (a.bloodQtyNeeded || 0);
-    } else if (sortBy === "name") {
-      return (a.h_name || "").localeCompare(b.h_name || "");
-    } else if (sortBy === "recent") {
-      // Sort by creation date (most recent first)
-      const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
-      const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
-      return dateB - dateA;
+    // Blood type filter
+    if (filterBloodType !== "all") {
+      filtered = filtered.filter(req => req.p_bloodgroup === filterBloodType);
     }
-    return 0;
-  });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage);
+    // Sort by city proximity (same city first)
+    filtered.sort((a, b) => {
+      const aMatch = a.p_city?.toLowerCase() === donorData?.d_city?.toLowerCase() ? 0 : 1;
+      const bMatch = b.p_city?.toLowerCase() === donorData?.d_city?.toLowerCase() ? 0 : 1;
+      return aMatch - bMatch;
+    });
 
-  // Reset to first page when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+    setFilteredRequests(filtered);
+  }, [searchQuery, filterBloodType, nearbyRequests, donorData]);
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
+        <HeartLoading />
+      </div>
+    );
+  }
+
+  const bloodTypes = ["DEA 1.1+", "DEA 1.2+", "DEA 3", "DEA 4", "DEA 5", "DEA 7", "Universal"];
 
   return (
-    <div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md md:max-w-lg lg:max-w-xl">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4"
-            onClick={() => setOpen(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-
-          <DialogHeader className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-2">
-            <Avatar className="h-16 w-16 hidden md:flex">
-              <AvatarImage src={selectedHospital?.h_logo_url} alt={selectedHospital?.h_name} />
-              <AvatarFallback className="bg-primary/10 text-lg">
-                {getInitials(selectedHospital?.h_name || "")}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-1">
-              <DialogTitle className="text-xl">
-                {selectedHospital?.h_name}
-              </DialogTitle>
-              
-            </div>
-          </DialogHeader>
-
-          <div className="grid gap-6 py-4">
-            <div className="grid gap-3">
-              <h3 className="font-medium text-lg">Hospital Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-sm">
-                <div className="flex items-center">
-                  <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{selectedHospital?.email}</span>
-                </div>
-                <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{selectedHospital?.h_phone}</span>
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{selectedHospital?.distance} km away</span>
-                </div>
-
-                
+    <ContentLayout title="Nearby Patients">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Hero Section */}
+        <section className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl mb-6">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 p-3 rounded-lg">
+                <MapPin className="w-8 h-8" />
               </div>
-
-            </div>
-            <div className="grid gap-3">
-              <h3 className="font-medium text-lg">Request Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-sm">
-              <div className="flex items-center ">
-                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>Posted: {selectedHospital?.createdAt ? formatTimeAgo(selectedHospital.createdAt) : "Unknown"}</span>
-                </div>
-
-                <div className="flex items-center">
-                  <Droplets className="h-4 w-4 mr-2 text-red-500" />
-                  <span><span className="font-medium">{selectedHospital?.bloodQtyNeeded} BU</span> needed</span>
-                </div>
-
-                {selectedHospital?.cause && (
-                  <div className="flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span>Reason: {selectedHospital.cause}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="font-medium text-lg">Book Appointment</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none">
-                    Select Date
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        disabled={(date) => date < new Date() || date > new Date(new Date().setDate(new Date().getDate() + 30))}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none">
-                    Select Time
-                  </label>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick a time slot" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>{time}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold mb-3">Find Patients Near You</h2>
+                <p className="text-blue-50 text-lg mb-4">
+                  Discover dogs in your area who could benefit from your life-saving donation. Every contribution makes a difference.
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 text-sm">
+                  <Navigation className="w-4 h-4" />
+                  <span>Showing patients near <strong>{donorData?.d_city || "your location"}</strong></span>
                 </div>
               </div>
             </div>
           </div>
+        </section>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="default"
-              className="bg-red-500 hover:bg-red-600 w-full sm:w-auto"
-              onClick={bookAppointment}
-              disabled={!date || !selectedTime || isBooking}
-            >
-              {isBooking ? "Booking..." : "Book Appointment"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ContentLayout title="Urgent Donation Requests">
-        <div className="w-full">
-          <div className="max-w-6xl px-4 py-6">
-          <h1 className="text-3xl font-bold text-red-500 mb-4">Blood Requests from Nearby Hospitals</h1>
-            <p className="text-md text-gray-700 dark:text-gray-300 mb-3">
-              Thank you for being a <span className="font-semibold">potential lifesaver</span>! Below is a list of hospitals currently requesting blood donations.
-            </p>
-            <p className="text-md text-gray-700 dark:text-gray-300 mb-3">
-              <span className="font-semibold">Your blood group: </span>
-              <span className="text-red-600 font-bold capitalize">{profile?.d_bloodgroup}</span>
-            </p>
-            <p className="text-md text-gray-700 dark:text-gray-300 mb-3">
-              You’ll only see donation requests that <span className="font-semibold">match your profile</span>, so make sure your information is always up to date.
-            </p>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              BU = Blood Unit. 1 BU = 450 ml blood.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Find hospitals to donate at..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="w-full sm:w-64">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="distance">Nearest first</SelectItem>
-                  <SelectItem value="quantity">Most needed first</SelectItem>
-                  <SelectItem value="recent">Most recent</SelectItem>
-                  <SelectItem value="name">Hospital name</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Loading urgent donation requests...</p>
-            </div>
-          ) : paginatedData.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedData.map((hospital, index) => (
-                  <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={hospital.h_logo_url} alt={hospital.h_name} />
-                        <AvatarFallback className="bg-primary/10">
-                          {getInitials(hospital.h_name || "")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{hospital.h_name}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {hospital.createdAt ? formatTimeAgo(hospital.createdAt) : ""}
-                        </p>
-                      </div>
-                      <Badge variant="destructive" className="ml-auto">Urgent</Badge>
-                    </CardHeader>
-                    <CardContent className="pb-4">
-                      <div className="grid gap-2">
-                        <div className="flex items-center text-sm">
-                          <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span>{hospital.distance ? `${hospital.distance} km away` : "Distance unknown"}</span>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <Droplets className="h-4 w-4 mr-2 text-red-500" />
-                          <span><span className="font-medium">{hospital.bloodQtyNeeded} BU</span> needed</span>
-                        </div>
-                        {hospital.cause && (
-                          <div className="flex items-center text-sm">
-                            <AlertCircle className="h-4 w-4 mr-2 text-muted-foreground" />
-                            <span className="truncate">Reason: {hospital.cause}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        variant="default"
-                        className="w-full bg-accent"
-                        onClick={() => {
-                          setSelectedHospital(hospital)
-                          setOpen(true)
-                          // Reset date and time when opening modal
-                          setDate(undefined)
-                          setSelectedTime("")
-                        }}
-                      >
-                        More Info & Book
-                      </Button>
-                    </CardFooter>
-                  </Card>
+        {/* Filters Section */}
+        <section className="bg-white border-b rounded-xl mb-6 shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Search className="w-5 h-5" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by patient name or location..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <select
+                value={filterBloodType}
+                onChange={(e) => setFilterBloodType(e.target.value)}
+                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[200px] outline-none"
+              >
+                <option value="all">All Blood Types</option>
+                {bloodTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
-              </div>
+              </select>
+            </div>
+          </div>
+        </section>
 
-              {/* Pagination controls */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      // Simple pagination logic to show current page and neighbors
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
-                          className="w-8 h-8"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </>
+        {/* Patient Cards */}
+        <main className="max-w-7xl mx-auto w-full">
+          {filteredRequests.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {filteredRequests.map((request) => (
+                <NearbyPatientItem key={request.id} request={request} donorCity={donorData?.d_city} />
+              ))}
+            </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No donation requests that match your profile are open right now.
+            <div className="bg-white rounded-xl p-16 text-center shadow-sm">
+              <MapPin className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                No patients found matching your filters
+              </h3>
+              <p className="text-gray-500">
+                Try adjusting your search criteria or check back later.
               </p>
             </div>
           )}
+        </main>
+      </div>
+    </ContentLayout>
+  );
+}
+
+function NearbyPatientItem({ request, donorCity }: any) {
+  const [expanded, setExpanded] = useState(false);
+  const isSameCity = request.p_city?.toLowerCase() === donorCity?.toLowerCase();
+
+  return (
+    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all border-l-4 border-blue-500 flex flex-col h-full">
+      <div className="p-6 flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4 gap-2">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              {request.p_name || `Patient #${request.id.slice(0, 6)}`}
+            </h3>
+            {request.p_hospitalName && (
+              <p className="text-sm text-gray-600 flex items-center gap-1">
+                🏥 {request.p_hospitalName}
+              </p>
+            )}
+          </div>
+          {isSameCity && (
+            <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+              <MapPin className="w-3 h-3" /> Same City
+            </span>
+          )}
         </div>
-      </ContentLayout>
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-red-50 rounded-lg p-3">
+            <p className="text-xs text-gray-600 mb-1 font-medium">Blood Type</p>
+            <p className="text-lg font-bold text-red-600 flex items-center gap-1">
+              <Droplet className="w-4 h-4" />
+              {request.p_bloodgroup}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-600 mb-1 font-medium">Location</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">{request.p_city}</p>
+            <p className="text-xs text-gray-500">{request.p_pincode}</p>
+          </div>
+        </div>
+
+        {/* Reason */}
+        {request.p_reasonRequirment && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg flex gap-2">
+            <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-gray-700 mb-0.5">Reason for Requirement</p>
+              <p className="text-sm text-gray-800 line-clamp-2">{request.p_reasonRequirment}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Contact Info (Expandable) */}
+        <div className="mt-auto">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-gray-900 py-2 border-t border-gray-100 transition-colors"
+          >
+            <span className="font-medium">{expanded ? "Hide" : "View"} Contact Info</span>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+
+          {expanded && (
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg space-y-2 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+              {request.emergency_contact_phone && (
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Phone className="w-4 h-4 text-blue-500" />
+                  <span>{request.emergency_contact_phone}</span>
+                </div>
+              )}
+              {request.email && (
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Mail className="w-4 h-4 text-blue-500" />
+                  <span className="truncate">{request.email}</span>
+                </div>
+              )}
+              {!request.emergency_contact_phone && !request.email && (
+                <p className="text-xs text-gray-500 italic">No contact information available</p>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          <button className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-all shadow-sm active:scale-[0.98]">
+            Offer to Donate
+          </button>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

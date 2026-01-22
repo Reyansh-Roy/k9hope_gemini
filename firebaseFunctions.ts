@@ -476,26 +476,28 @@ export async function getDonorHistory(donorId: string) {
 }
 
 // Get urgent blood requests (patients with urgency = immediate or within_24_hours)
-export async function getUrgentRequests(donorCity?: string, donorBloodType?: string) {
+export async function getUrgentRequests(donorCity?: string, donorBloodType?: string, onlyUrgent: boolean = true) {
     try {
         const patientsRef = collection(db, "patients");
 
-        // Query for urgent patients
+        // Query for onboarded patients
         const q = query(
             patientsRef,
             where("onboarded", "==", "yes"),
             orderBy("createdAt", "desc"),
-            limit(20)
+            limit(50)
         );
 
         const snapshot = await getDocs(q);
         let requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
-        // Client-side filtering for urgency
-        requests = requests.filter((req: any) =>
-            req.p_urgencyRequirment === "immediate" ||
-            req.p_urgencyRequirment === "within_24_hours"
-        );
+        // Client-side filtering for urgency if requested
+        if (onlyUrgent) {
+            requests = requests.filter((req: any) =>
+                req.p_urgencyRequirment === "immediate" ||
+                req.p_urgencyRequirment === "within_24_hours"
+            );
+        }
 
         // Client-side filtering for blood type match
         if (donorBloodType) {
@@ -511,9 +513,9 @@ export async function getUrgentRequests(donorCity?: string, donorBloodType?: str
             });
         }
 
-        return requests.slice(0, 6); // Return max 6 urgent requests
+        return requests.slice(0, onlyUrgent ? 6 : 20); // Return more results if not just urgent
     } catch (error) {
-        console.error("Error fetching urgent requests:", error);
+        console.error("Error fetching requests:", error);
         return [];
     }
 }
