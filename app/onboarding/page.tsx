@@ -142,7 +142,16 @@ const OnboardingPage = () => {
     }
   };
 
-  if (isLoading || isAuthLoading) {
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <HeartLoading />
+      </div>
+    );
+  }
+
+  // If already onboarded, don't render content (useEffect will redirect)
+  if (role !== "guest" && onboarded === "yes") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <HeartLoading />
@@ -165,14 +174,7 @@ const OnboardingPage = () => {
           </button>
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Complete Your K9Hope Registration
-          </h1>
-          <p className="text-gray-600">
-            Please provide the required information to complete your profile and start using K9Hope.
-          </p>
-        </div>
+
 
         <div className="bg-white rounded-lg shadow-md p-6">
           {content}

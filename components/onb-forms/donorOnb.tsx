@@ -152,6 +152,7 @@ export default function OnboardingDon() {
 
     //Logout Function
     function handleLogout() {
+        localStorage.clear();
         setUser(null, "guest", "guest");
         router.push("/");
     }
@@ -233,7 +234,7 @@ export default function OnboardingDon() {
     const isGeneralHealthIssue = form.watch("d_general_health") === "no";
 
     // SUBMIT FORM FUNCTION
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
             setIsLoading(true);
             const formValues = form.getValues();
@@ -246,21 +247,47 @@ export default function OnboardingDon() {
                             (typeof value !== "object" || value === null || Array.isArray(value))
                         );
                     })
-                )
+                ),
+                onboarded: "yes" // CRITICAL: Force onboarded to "yes"
             };
 
-            updateUserData("donors", userId, sanitizedData)
-                .then(response => {
-                    if (response.success) {
-                        console.log("User updated successfully:", response.message);
-                    } else {
-                        alert("Error updating user:", response.message);
-                        return;
-                    }
-                });
+            const response = await updateUserData("donors", userId, sanitizedData);
 
-            // update onboarding in usercontext
-            setUser(userId, "donor", "yes");
+            if (!response.success) {
+                setIsLoading(false);
+                alert("Error updating user: " + response.message);
+                return;
+            }
+
+            console.log("User updated successfully:", response.message);
+
+            // Also update users collection with onboarded status
+            const userData = {
+                role: "donor",
+                onboarded: "yes",
+                phone: phone,
+                email: sanitizedData.email,
+                updatedAt: new Date()
+            };
+
+            const userResponse = await updateUserData("users", userId, userData);
+
+            if (!userResponse.success) {
+                setIsLoading(false);
+                alert("Error updating user collection: " + userResponse.message);
+                return;
+            }
+
+            console.log("User collection updated successfully");
+
+            // update onboarding in usercontext AFTER successful DB update
+            setUser(userId, "donor", "yes", phone);
+
+            // Small delay to ensure context propagates
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Navigate to dashboard
+            router.push("/app/d/dashboard");
 
         } catch (error) {
             setIsLoading(false);

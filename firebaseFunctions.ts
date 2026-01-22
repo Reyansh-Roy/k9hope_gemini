@@ -33,15 +33,15 @@ function generateUserId(): string {
 export async function loginUserDatabase(role: string, loginId: string) {
     try {
         console.log("Attempting login for role:", role, "with loginId:", loginId);
-        
+
         // Remove anonymous authentication - work with permissive Firestore rules instead
         console.log("Proceeding without Firebase authentication");
-        
+
         switch (role) {
             case "patient": {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("phone", "==", loginId.toLowerCase().trim()));
-                
+
                 try {
                     const querySnapshot = await getDocs(q);
                     console.log("Firestore Query Result:", querySnapshot.docs.map(doc => doc.data()));
@@ -61,7 +61,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
                 // If User does NOT exist, create a new one in users collection
                 const userId = generateUserId();
                 console.log("Creating new user with ID:", userId);
-                
+
                 try {
                     const userDocRef = doc(db, "users", userId);
 
@@ -98,7 +98,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
             case "donor": {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("phone", "==", loginId.toLowerCase().trim()));
-                
+
                 try {
                     const querySnapshot = await getDocs(q);
                     console.log("Firestore Query Result:", querySnapshot.docs.map(doc => doc.data()));
@@ -117,7 +117,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
                 // ❌ If User does NOT exist, create a new one in users collection
                 const userId = generateUserId();
                 console.log("Creating new user with ID:", userId);
-                
+
                 try {
                     const userDocRef = doc(db, "users", userId);
 
@@ -153,7 +153,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
             case "veterinary": {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("email", "==", loginId.toLowerCase().trim()));
-                
+
                 try {
                     const querySnapshot = await getDocs(q);
                     console.log("Firestore Query Result:", querySnapshot.docs.map(doc => doc.data()));
@@ -172,7 +172,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
                 // ❌ If User does NOT exist, create a new one in users collection
                 const userId = generateUserId();
                 console.log("Creating new user with ID:", userId);
-                
+
                 try {
                     const userDocRef = doc(db, "users", userId);
 
@@ -208,7 +208,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
             case "organisation": {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("email", "==", loginId.toLowerCase().trim()));
-                
+
                 try {
                     const querySnapshot = await getDocs(q);
                     console.log("Firestore Query Result:", querySnapshot.docs.map(doc => doc.data()));
@@ -227,7 +227,7 @@ export async function loginUserDatabase(role: string, loginId: string) {
                 // ❌ If User does NOT exist, create a new one in users collection
                 const userId = generateUserId();
                 console.log("Creating new user with ID:", userId);
-                
+
                 try {
                     const userDocRef = doc(db, "users", userId);
 
@@ -344,20 +344,28 @@ export async function getUserDataById(userId: string, role: string) {
 
 
 // func to update data of a user/collection in their role's doc
-export async function updateUserData(role, userId, updateData) {
+// func to update data of a user/collection in their role's doc
+export async function updateUserData(
+    collection: string,
+    userId: string,
+    data: any
+): Promise<{ success: boolean; message: string }> {
     try {
-        const userRef = doc(db, role, userId);
-        const userSnap = await getDoc(userRef);
+        const docRef = doc(db, collection, userId);
 
-        if (userSnap.exists()) {
-            await updateDoc(userRef, updateData);
-        } else {
-            await setDoc(userRef, updateData);
-        }
+        // Use merge: true to update existing fields or create new document
+        await setDoc(docRef, data, { merge: true });
 
-        return { success: true, message: "User updated successfully" };
+        return {
+            success: true,
+            message: "User data updated successfully"
+        };
     } catch (error) {
-        return { success: false, message: error.message };
+        console.error("Error updating user data:", error);
+        return {
+            success: false,
+            message: error.message || "Failed to update user data"
+        };
     }
 }
 

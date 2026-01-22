@@ -5,7 +5,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-
+import { db } from "@/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 const COOKIE_ENCRYPT_KEY = process.env.NEXT_PUBLIC_COOKIE_ENCRYPT_KEY;
 
 // Function to Encrypt Data
@@ -111,25 +112,88 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Load stored user data from cookies on mount
   useEffect(() => {
-    setIsAuthLoading(true);
-
-    const storedUserId = getDecryptedCookie("userId") || null;
-    const storedRole = (getDecryptedCookie("role") as UserRole) || "guest";
-    const storedStatus = (getDecryptedCookie("onboarded") as Onboarded) || "guest";
-    const storedPhone = getDecryptedCookie("phone") || null;
-
-    setUserId(storedUserId !== "" ? storedUserId : null);
-    setRole(storedRole);
-    setOnboarded(storedStatus);
-    setPhone(storedPhone);
-
     // Detect device on mount (client-side only)
     if (typeof window !== "undefined") {
       setDevice(window.innerWidth < 500 ? "mobile" : "desktop");
     }
 
-    // Mark auth loading as complete
-    setIsAuthLoading(false);
+    // Function to check auth status
+    const checkAuth = async () => {
+      setIsAuthLoading(true);
+
+      try {
+        const storedUserId = getDecryptedCookie("userId") || null;
+        const storedRole = (getDecryptedCookie("role") as UserRole) || "guest";
+        const storedStatus = (getDecryptedCookie("onboarded") as Onboarded) || "guest";
+        const storedPhone = getDecryptedCookie("phone") || null;
+
+        if (storedUserId && storedRole && storedRole !== "guest") {
+          // Fetch fresh data from Firestore to get confirmed onboarded status
+          // Determine collection based on role
+          let collectionName = "";
+          switch (storedRole) {
+            case "donor": collectionName = "donors"; break;
+            case "patient": collectionName = "patients"; break;
+            case "veterinary": collectionName = "veterinaries"; break;
+            case "organisation": collectionName = "organisations"; break;
+            case "hospital": collectionName = "veterinaries"; break; // Handle hospital alias
+            default: collectionName = "users";
+          }
+
+          if (collectionName) {
+            try {
+              const docRef = doc(db, collectionName, storedUserId);
+              const docSnap = await getDoc(docRef);
+
+              if (docSnap.exists()) {
+                const userData = docSnap.data();
+                // Update state with fresh data from DB
+                setUserId(storedUserId);
+                setRole(storedRole);
+                const freshOnboardedStatus = userData.onboarded === "yes" ? "yes" : "no";
+                setOnboarded(freshOnboardedStatus as Onboarded);
+                setPhone(userData.phone || storedPhone);
+
+                // Update cookies to match DB if different
+                if (freshOnboardedStatus !== storedStatus) {
+                  setEncryptedCookie("onboarded", freshOnboardedStatus, 7);
+                }
+              } else {
+                // Fallback to cookie data if doc fetch fails (e.g. offline) or doc missing
+                setUserId(storedUserId);
+                setRole(storedRole);
+                setOnboarded(storedStatus);
+                setPhone(storedPhone);
+              }
+            } catch (err) {
+              console.error("Error fetching fresh user data:", err);
+              // Fallback to cookie data
+              setUserId(storedUserId);
+              setRole(storedRole);
+              setOnboarded(storedStatus);
+              setPhone(storedPhone);
+            }
+          } else {
+            setUserId(storedUserId);
+            setRole(storedRole);
+            setOnboarded(storedStatus);
+            setPhone(storedPhone);
+          }
+        } else {
+          // Guest or incomplete auth
+          setUserId(storedUserId !== "" ? storedUserId : null);
+          setRole(storedRole);
+          setOnboarded(storedStatus);
+          setPhone(storedPhone);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   return (
