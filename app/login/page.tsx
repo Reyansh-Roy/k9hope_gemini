@@ -79,7 +79,7 @@ async function getOnboardedStatus(userId: string) {
 const PatientContent: React.FC = () => {
   const { setUser } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState<JSX.Element | null>(null);
+  const [content, setContent] = useState<React.ReactElement | null>(null);
 
   let isProcessing = false;
 
