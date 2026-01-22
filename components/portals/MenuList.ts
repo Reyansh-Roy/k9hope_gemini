@@ -31,7 +31,7 @@ type Group = {
 
 
 
-export function getMenuList(pathname: string, role: "guest" | "admin" | "removed" | "patient" | "donor" | "veterinary" | "organisation"): Group[] {
+export function getMenuList(pathname: string, role: "guest" | "admin" | "removed" | "patient" | "donor" | "veterinary" | "hospital" | "organisation"): Group[] {
 
   if (role === "organisation") {
     return [
