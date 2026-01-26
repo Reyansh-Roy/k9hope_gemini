@@ -1,11 +1,36 @@
 "use client";
-import { useAdminAuth } from "@/context/AdminAuthContext";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, Shield } from "lucide-react";
 
 export default function HospitalDashboard() {
-  const { isAuthenticated, username, isLoading, logout } = useAdminAuth();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Show loading state while checking auth
+  useEffect(() => {
+    // Check if admin cookie exists
+    const adminCookie = document.cookie.includes("k9hope_admin=true");
+
+    if (!adminCookie) {
+      // Not authenticated, redirect to login
+      router.push("/admin/login");
+      return;
+    }
+
+    setIsAuthenticated(true);
+    setIsLoading(false);
+  }, [router]);
+
+  const handleLogout = () => {
+    // Clear cookies
+    document.cookie = "k9hope_admin=; path=/; max-age=0";
+    document.cookie = "k9hope_admin_user=; path=/; max-age=0";
+
+    // Redirect to login
+    router.push("/login");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -17,14 +42,9 @@ export default function HospitalDashboard() {
     );
   }
 
-  // If not authenticated, redirect happens automatically in context
   if (!isAuthenticated) {
     return null;
   }
-
-  const handleLogout = () => {
-    logout();
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -41,7 +61,7 @@ export default function HospitalDashboard() {
 
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{username}</p>
+              <p className="text-sm font-semibold text-gray-900">ADMIN</p>
               <p className="text-xs text-gray-500">Administrator</p>
             </div>
             <button
@@ -58,7 +78,7 @@ export default function HospitalDashboard() {
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-2">Welcome, {username}</h2>
+          <h2 className="text-3xl font-bold mb-2">Welcome, Administrator</h2>
           <p className="text-blue-100">K9Hope Veterinary Blood Bank Management System</p>
         </div>
       </div>
@@ -97,7 +117,7 @@ export default function HospitalDashboard() {
           />
         </div>
 
-        {/* Coming Soon Notice */}
+        {/* Coming Soon */}
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-500 text-lg">
             Full dashboard features coming soon...

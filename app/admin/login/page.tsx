@@ -3,11 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Lock, User, AlertCircle, ArrowLeft, Loader } from "lucide-react";
 import Link from "next/link";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 
 export default function AdminLoginPage() {
     const router = useRouter();
-    const { login } = useAdminAuth();
     const [username, setUsername] = useState("ADMIN");
     const [passcode, setPasscode] = useState("");
     const [error, setError] = useState("");
@@ -18,33 +16,43 @@ export default function AdminLoginPage() {
         setError("");
         setLoading(true);
 
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 600));
+        try {
+            // Validate credentials
+            if (username.toUpperCase() !== "ADMIN" || passcode !== "k9hopeRit") {
+                setError("Invalid credentials. Please check username and passcode.");
+                setLoading(false);
+                setPasscode("");
+                return;
+            }
 
-        const success = await login(username, passcode);
+            // Set cookie for authentication (persists across page loads)
+            document.cookie = `k9hope_admin=true; path=/; max-age=${60 * 60 * 24}`;
+            document.cookie = `k9hope_admin_user=ADMIN; path=/; max-age=${60 * 60 * 24}`;
 
-        if (success) {
-            // Small delay before redirect to ensure state updates
-            setTimeout(() => {
-                router.push("/app/h/dashboard");
-            }, 300);
-        } else {
-            setError("Invalid credentials. Please check username and passcode.");
+            // Wait a moment for cookies to be set
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Redirect to dashboard - use replace to avoid back button issues
+            router.push("/app/h/dashboard");
+
+        } catch (err) {
+            setError("An error occurred. Please try again.");
             setLoading(false);
-            setPasscode(""); // Clear passcode on error
         }
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
+            <div className="absolute inset-0 bg-opacity-10"></div>
 
             <div className="relative w-full max-w-md">
+                {/* Back Button */}
                 <Link href="/login" className="inline-flex items-center gap-2 text-blue-200 hover:text-white mb-6 transition-colors">
                     <ArrowLeft className="w-4 h-4" />
                     Back to Login Options
                 </Link>
 
+                {/* Login Card */}
                 <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-center">
@@ -74,6 +82,7 @@ export default function AdminLoginPage() {
                                     onChange={(e) => setUsername(e.target.value.toUpperCase())}
                                     className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:ring focus:ring-blue-200 transition-all text-gray-900 font-medium uppercase"
                                     disabled={loading}
+                                    readOnly
                                 />
                             </div>
                         </div>
@@ -89,7 +98,7 @@ export default function AdminLoginPage() {
                                     type="password"
                                     value={passcode}
                                     onChange={(e) => setPasscode(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:ring focus:ring-blue-200 transition-all"
+                                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:ring focus:ring-blue-200 transition-all text-gray-900 font-mono"
                                     placeholder="Enter passcode"
                                     required
                                     disabled={loading}

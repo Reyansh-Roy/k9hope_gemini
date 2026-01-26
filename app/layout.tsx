@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { Toaster } from "@/components/ui/toaster"
-import { AdminAuthProvider } from "@/context/AdminAuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -72,9 +71,7 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              <AdminAuthProvider>
-                {children}
-              </AdminAuthProvider>
+              {children}
             </ThemeProvider>
             <Toaster />
           </body>
