@@ -1,50 +1,22 @@
-//@ts-nocheck
 "use client";
 import { useEffect, useState } from "react";
-
-
-import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { useRouter } from "next/navigation";
+import { checkAdminAuth, getAdminSession } from "@/lib/adminAuth";
+import HospitalHeader from "@/components/hospital/HospitalHeader";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useSidebar } from "@/hooks/use-sidebar";
-import { useStore } from "@/hooks/use-store";
-
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-
-import GreetingCard from "@/components/portals/common-parts/greeting-card"
-
-
-// User Imports
-import { useUser } from "@/context/UserContext";
-import { db } from "@/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
-import { getUserDataById } from "@/firebaseFunctions";
 
 
 
-import { checkAdminAuth, getAdminSession } from "@/lib/adminAuth";
-import { useRouter } from "next/navigation";
-
-export default function DashboardPage() {
-  const sidebar = useStore(useSidebar, (x) => x);
+export default function HospitalDashboard() {
   const router = useRouter();
-  const { userId, role, device, setUser } = useUser();
-  const [profile, setProfile] = useState<any>(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const session = getAdminSession();
 
   useEffect(() => {
     // Check admin authentication
@@ -58,15 +30,6 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  useEffect(() => {
-    async function fetchHospitalData() {
-      if (!userId) return; // ✅ Safe condition inside useEffect
-      const data = await getUserDataById(userId, "hospital");
-      setProfile(data);
-    }
-    fetchHospitalData();
-  }, [userId]);
-
   // Show loading while checking auth
   if (!isAuthorized) {
     return (
@@ -79,31 +42,52 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ Sidebar check inside JSX instead of returning early
-  if (!sidebar) {
-    return <div>Loading Sidebar...</div>;
-  }
-
-  const session = getAdminSession();
-
   return (
-    <ContentLayout title="Dashboard">
+    <div className="min-h-screen bg-gray-50">
+      <HospitalHeader />
+
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg mb-6 shadow-md">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 shadow-md">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-2">Welcome back, Administrator</h2>
           <p className="text-blue-100">
-            Logged in as <strong>{session?.username || "ADMIN"}</strong> -  K9Hope Veterinary Blood Bank CRM
+            Logged in as <strong>{session?.username || 'ADMIN'}</strong> -  K9Hope Veterinary Blood Bank CRM
           </p>
         </div>
       </div>
 
-      <div>
-        <GreetingCard name={profile?.h_admin_name || session?.username} role="hospital" />
+      {/* Rest of dashboard content */}
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Blood Requests</CardTitle>
+              <CardDescription>Manage incoming patient needs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">12</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Donors</CardTitle>
+              <CardDescription>Available for donation today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">48</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory Status</CardTitle>
+              <CardDescription>Units in cold storage</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">Good</div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-
-
-    </ContentLayout>
+    </div>
   );
 }

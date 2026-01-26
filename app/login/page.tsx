@@ -581,11 +581,8 @@ const RoleContent: React.FC<RoleContentProps> = ({ role }) => {
       return <PatientContent />
     case "Continue as Donor":
       return <DonorContent />
-    /*   
-      // REPLACED WITH ADMIN LOGIN REDIRECT
-      case "Continue as Veterinary Clinic":
-        return <VeterinaryContent /> 
-    */
+    case "Continue as Veterinary Clinic":
+      return <VeterinaryContent />
     case "Continue as Organisation/NGO":
       return <OrganisationContent />
 
@@ -614,10 +611,12 @@ export default function LoginPage() {
   const [direction, setDirection] = useState(1)
 
   const handleRoleSelect = (role: typeof items[0]) => {
+    // Redirect Veterinary Clinic to new Admin Login
     if (role.title === "Continue as Veterinary Clinic") {
       router.push("/admin/login");
       return;
     }
+
     setDirection(1)
     setSelectedRole(role)
   }

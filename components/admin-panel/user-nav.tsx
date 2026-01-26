@@ -42,9 +42,6 @@ function getInitials(name: string): string {
 }
 
 
-
-import { logoutAdmin } from "@/lib/adminAuth";
-
 export function UserNav() {
 
   const { userId, role, device, setUser } = useUser();
@@ -52,9 +49,8 @@ export function UserNav() {
   const [profile, setProfile] = useState<any>(null);
 
   function handleLogout() {
-    logoutAdmin();
     setUser(null, "guest", "guest");
-    router.push("/login");
+    router.push("/");
   }
 
   // Fetch data when the component loads
