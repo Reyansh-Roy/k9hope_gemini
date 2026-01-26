@@ -28,9 +28,10 @@ export default function AdminLoginPage() {
             localStorage.setItem("k9hope_admin_session", "true");
             localStorage.setItem("k9hope_admin_username", username);
             localStorage.setItem("k9hope_admin_login_time", new Date().toISOString());
+            localStorage.setItem("k9hope_user_role", "veterinary");
 
-            // Redirect to hospital dashboard
-            router.push("/app/h/dashboard");
+            // Direct redirect to hospital dashboard - bypass /app
+            window.location.href = "/app/h/dashboard";
         } else {
             setError("Invalid credentials. Please check username and passcode.");
             setLoading(false);
@@ -108,7 +109,7 @@ export default function AdminLoginPage() {
                             </div>
                             <p className="text-xs text-gray-500 mt-2 italic flex items-center gap-1">
                                 <AlertCircle className="w-3 h-3" />
-                                Hint: This is a final-year project (for fun!)
+                                Hint: RIT Chennai CSE Final Year Project 2025-26
                             </p>
                         </div>
 

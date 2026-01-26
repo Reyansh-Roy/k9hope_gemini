@@ -16,17 +16,23 @@ import {
 export default function HospitalDashboard() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const session = getAdminSession();
+  // const session = getAdminSession();
+  const [username, setUsername] = useState("ADMIN");
 
   useEffect(() => {
     // Check admin authentication
-    const isAuth = checkAdminAuth();
+    const adminSession = localStorage.getItem("k9hope_admin_session");
+    const userRole = localStorage.getItem("k9hope_user_role");
+    const storedUsername = localStorage.getItem("k9hope_admin_username");
 
-    if (!isAuth) {
+    // const isAuth = checkAdminAuth(); // Replaced by direct check below
+
+    if (adminSession === "true" && userRole === "veterinary") {
+      setIsAuthorized(true);
+      if (storedUsername) setUsername(storedUsername);
+    } else {
       // Redirect to admin login if not authenticated
       router.push("/admin/login");
-    } else {
-      setIsAuthorized(true);
     }
   }, [router]);
 
@@ -51,7 +57,7 @@ export default function HospitalDashboard() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-2">Welcome back, Administrator</h2>
           <p className="text-blue-100">
-            Logged in as <strong>{session?.username || 'ADMIN'}</strong> -  K9Hope Veterinary Blood Bank CRM
+            Logged in as <strong>{username}</strong> -  K9Hope Veterinary Blood Bank CRM
           </p>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://k9hope.vercel.app'),
   title: "K9Hope - Canine Blood Donation Platform",
   description: "India's first AI-powered canine blood donation network connecting verified dog donors with veterinary clinics. Built by RIT Chennai in partnership with Madras Veterinary College.",
   keywords: ["canine blood donation", "dog blood bank", "veterinary blood", "pet blood donation", "K9Hope", "RIT Chennai", "Madras Veterinary College"],

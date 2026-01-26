@@ -22,6 +22,20 @@ const AppPage = () => {
     const { userId, role, onboarded, device, setUser } = useUser(); // Get user data from context
     const router = useRouter();
 
+    useEffect(() => {
+        // Check if this is an admin login
+        const adminSession = localStorage.getItem("k9hope_admin_session");
+        const userRole = localStorage.getItem("k9hope_user_role");
+
+        if (adminSession === "true" && userRole === "veterinary") {
+            // Admin should go directly to hospital dashboard
+            router.replace("/app/h/dashboard");
+            return;
+        }
+
+        // Regular user flow continues as normal
+    }, [router]);
+
     const [uiLoaded, setUiLoaded] = useState(false); // Track when UI is ready
     const [isLoading, setIsLoading] = useState(true); // Control HeartLoading visibility
     const [delayedUI, setDelayedUI] = useState(null); // Store delayed UI
