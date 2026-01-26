@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Moon, Sun, ArrowLeft } from "lucide-react"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -580,8 +581,11 @@ const RoleContent: React.FC<RoleContentProps> = ({ role }) => {
       return <PatientContent />
     case "Continue as Donor":
       return <DonorContent />
-    case "Continue as Veterinary Clinic":
-      return <VeterinaryContent />
+    /*   
+      // REPLACED WITH ADMIN LOGIN REDIRECT
+      case "Continue as Veterinary Clinic":
+        return <VeterinaryContent /> 
+    */
     case "Continue as Organisation/NGO":
       return <OrganisationContent />
 
@@ -610,6 +614,10 @@ export default function LoginPage() {
   const [direction, setDirection] = useState(1)
 
   const handleRoleSelect = (role: typeof items[0]) => {
+    if (role.title === "Continue as Veterinary Clinic") {
+      router.push("/admin/login");
+      return;
+    }
     setDirection(1)
     setSelectedRole(role)
   }

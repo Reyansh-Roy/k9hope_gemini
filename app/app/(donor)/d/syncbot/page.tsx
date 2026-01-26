@@ -12,7 +12,7 @@ import ReactMarkdown from "react-markdown";
 
 import { useUser } from "@/context/UserContext";
 
-export default function UrgentDonationsPage() {
+export default function K9BuddyPage() {
   const { userId, role, device } = useUser();
 
   if (!device) {
@@ -68,8 +68,8 @@ export default function UrgentDonationsPage() {
             <div
               key={index}
               className={`p-3 my-2 rounded-lg text-sm shadow-md ${msg.sender === "user"
-                  ? "ml-auto bg-accent text-white mr-2 text-left" // user messages aligned to left with gap on right
-                  : "mr-auto bg-gray-100 dark:bg-muted text-gray-800 dark:text-gray-200 ml-2 text-left" // bot messages aligned to right with gap on left
+                ? "ml-auto bg-accent text-white mr-2 text-left" // user messages aligned to left with gap on right
+                : "mr-auto bg-gray-100 dark:bg-muted text-gray-800 dark:text-gray-200 ml-2 text-left" // bot messages aligned to right with gap on left
                 } ${device === "desktop" ? "max-w-[30%]" : "max-w-[80%]"}`}
             >
               <ReactMarkdown>{msg.text}</ReactMarkdown>

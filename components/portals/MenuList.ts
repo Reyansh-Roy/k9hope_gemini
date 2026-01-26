@@ -471,7 +471,7 @@ export function getMenuList(pathname: string, role: "guest" | "admin" | "removed
             href: "/app/d/syncbot",
             label: "K9 Buddy AI",
             icon: Bot,
-            isSpecial: true
+            isSpecial: true // Special styling for AI chatbot
           }
         ]
       }

@@ -36,10 +36,27 @@ import { getUserDataById } from "@/firebaseFunctions";
 
 
 
+import { checkAdminAuth, getAdminSession } from "@/lib/adminAuth";
+import { useRouter } from "next/navigation";
+
 export default function DashboardPage() {
   const sidebar = useStore(useSidebar, (x) => x);
+  const router = useRouter();
   const { userId, role, device, setUser } = useUser();
   const [profile, setProfile] = useState<any>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    // Check admin authentication
+    const isAuth = checkAdminAuth();
+
+    if (!isAuth) {
+      // Redirect to admin login if not authenticated
+      router.push("/admin/login");
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [router]);
 
   useEffect(() => {
     async function fetchHospitalData() {
@@ -50,21 +67,42 @@ export default function DashboardPage() {
     fetchHospitalData();
   }, [userId]);
 
+  // Show loading while checking auth
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Verifying credentials...</p>
+        </div>
+      </div>
+    );
+  }
+
   // ✅ Sidebar check inside JSX instead of returning early
   if (!sidebar) {
     return <div>Loading Sidebar...</div>;
   }
 
+  const session = getAdminSession();
+
   return (
     <ContentLayout title="Dashboard">
-
-
-
-      <div>
-        <GreetingCard name={profile?.h_admin_name} role="hospital" />
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg mb-6 shadow-md">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl font-bold mb-2">Welcome back, Administrator</h2>
+          <p className="text-blue-100">
+            Logged in as <strong>{session?.username || "ADMIN"}</strong> -  K9Hope Veterinary Blood Bank CRM
+          </p>
+        </div>
       </div>
 
-      
+      <div>
+        <GreetingCard name={profile?.h_admin_name || session?.username} role="hospital" />
+      </div>
+
+
 
     </ContentLayout>
   );
