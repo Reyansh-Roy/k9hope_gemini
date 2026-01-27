@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fuzzy } from "fast-fuzzy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 console.log("CRITICAL: API KEY STATUS:", !!process.env.GEMINI_API_KEY);
