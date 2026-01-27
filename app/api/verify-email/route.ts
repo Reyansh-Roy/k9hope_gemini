@@ -10,7 +10,6 @@ export async function POST(req: Request) {
 
         // ❌ Do NOT use `NEXT_PUBLIC_` for private API keys (public keys)
         const API_KEY = process.env.PHONE_EMAIL_API_KEY;
-        const CLIENT_ID = process.env.PHONE_EMAIL_CLIENT_ID;
 
         if (!API_KEY) {
             console.error("API Key is missing in environment variables.");
