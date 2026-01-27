@@ -62,8 +62,7 @@ RESPONSE GUIDELINES:
  */
 async function chatbotResponse(
   model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
-  userInput: string,
-  req: NextRequest
+  userInput: string
 ): Promise<string> {
   const normalized = userInput.toLowerCase().trim();
 
@@ -108,7 +107,6 @@ async function getGeminiResponse(model: ReturnType<GoogleGenerativeAI["getGenera
 
 /**
  * API Route Handler: Accepts a POST request with a JSON body containing { message: string }.
- * Note: We pass the request object into chatbotResponse so it can build the XLSX URL.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -148,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     // Use knowledge base as a background system prompt (not shown in chat)
     const userText = String(message);
-    const reply = await chatbotResponse(model, userText, req);
+    const reply = await chatbotResponse(model, userText);
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("Chatbot API Error:", error);
