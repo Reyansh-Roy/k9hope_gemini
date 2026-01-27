@@ -36,6 +36,8 @@ export default function DonorDashboard() {
 
     // Fetch all dashboard data
     async function fetchDashboardData() {
+      if (!userId) return; // TypeScript null check
+      
       setLoading(true);
       try {
         // Fetch donor profile data
