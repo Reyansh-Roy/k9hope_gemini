@@ -101,7 +101,7 @@ Mentor:
 - O. Pandithurai, Faculty, Dept. of CSE, RIT Chennai
 
 ## 🏥 Partnership
-**Madras Veterinary College, Vepery**
+**Madras Veterinary College, Vepery**  
 Exclusive medical partner for all donation and transfusion procedures.
 
 ## 📄 License
@@ -109,5 +109,7 @@ This project is developed for academic purposes. All rights reserved by the K9Ho
 
 ## 🏷 Tags
 #CanineBlood #VeterinaryTech #AIforGood #RITChennai #MadrasVetCollege #BloodDonation #PetHealthcare #FinalYearProject #CSE
+
+---
 
 © 2026 K9Hope - RIT Chennai | Madras Veterinary College
