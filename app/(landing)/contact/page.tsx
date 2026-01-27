@@ -1,6 +1,5 @@
 import Footer from "@/components/landing-page/footer";
 import Navbar from "@/components/landing-page/BusinessNavbar";
-import { ContactForm } from "@/components/landing-page/contact-form";
 
 export const metadata = {
   title: "Contact Us | DonorSync",
