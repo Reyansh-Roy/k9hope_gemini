@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { getUserDataById, getUrgentRequests } from "@/firebaseFunctions";
 import { MapPin, Droplet, Phone, Mail, ChevronDown, Navigation, Search, Info } from "lucide-react";
 import HeartLoading from "@/components/custom/HeartLoading";
-import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 
 export default function NearbyDonationsPage() {
@@ -179,7 +178,7 @@ function NearbyPatientItem({ request, donorCity }: any) {
             </h3>
             {request.p_hospitalName && (
               <p className="text-sm text-gray-600 flex items-center gap-1">
-                🏥 {request.p_hospitalName}
+                🏪 {request.p_hospitalName}
               </p>
             )}
           </div>
