@@ -12,10 +12,19 @@ import { AlertCircle, MapPin, Calendar, BarChart3, Heart, Users, Clock, Trending
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import HeartLoading from "@/components/custom/HeartLoading";
 
+// Define proper type for donor data
+interface DonorData {
+  id: string;
+  d_name?: string;
+  d_city?: string;
+  d_bloodgroup?: string;
+  [key: string]: any;
+}
+
 export default function DonorDashboard() {
   const { userId, role } = useUser();
   const router = useRouter();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<DonorData | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [urgentRequests, setUrgentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +48,7 @@ export default function DonorDashboard() {
       setLoading(true);
       try {
         // Fetch donor profile data
-        const donorData = await getUserDataById(userId, "donor");
+        const donorData = await getUserDataById(userId, "donor") as DonorData;
         setProfile(donorData);
 
         if (donorData) {
