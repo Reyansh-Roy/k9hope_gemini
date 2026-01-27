@@ -23,6 +23,8 @@ export default function AppointmentsPage() {
     }
 
     async function fetchAppointments() {
+      if (!userId) return; // TypeScript null check
+      
       setIsLoading(true);
       try {
         const appointmentsData = await getDonorAppointments(userId);
