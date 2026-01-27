@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
 import { fuzzy } from "fast-fuzzy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -144,7 +143,7 @@ async function chatbotResponse(
   );
 
   if (isStressedOrIrrelevant) {
-    return "A dog is the only thing on earth that loves you more than he loves himself. Take a deep breath; we are here to help you navigate this for your companion. Please ask a question related to canine blood donation or Jillu’s clinical status.";
+    return "A dog is the only thing on earth that loves you more than he loves himself. Take a deep breath; we are here to help you navigate this for your companion. Please ask a question related to canine blood donation or Jillu's clinical status.";
   }
 
   return await getGeminiResponse(model, userInput);
